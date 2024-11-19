@@ -1800,6 +1800,7 @@ dependencies = [
 [[package]]
 name = "eth-sparse-mpt"
 version = "0.1.0"
+source = "git+https://github.com/xtrm0/eth-sparse-mpt#11293e4e15f331d52c12439bce4f6b89d8421808"
 dependencies = [
  "alloy-json-rpc",
  "alloy-primitives",

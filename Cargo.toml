@@ -21,7 +21,8 @@ alloy-primitives = { version = "0.8.11", default-features = false, features = ["
 
 jsonrpsee = "0.24.6"
 
-eth-sparse-mpt = { path = "../eth-sparse-mpt" }
+# eth-sparse-mpt = { path = "../eth-sparse-mpt" }
+eth-sparse-mpt = { git = "https://github.com/xtrm0/eth-sparse-mpt" }
 
 tokio = { version = "1.41.1", features = ["full"] }
 futures = "0.3.31"
