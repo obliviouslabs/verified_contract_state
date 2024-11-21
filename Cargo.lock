@@ -3138,36 +3138,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "light_contract_storage"
-version = "0.1.0"
-dependencies = [
- "alloy-json-rpc",
- "alloy-primitives",
- "alloy-rlp",
- "alloy-rpc-types",
- "alloy-rpc-types-eth",
- "alloy-trie",
- "async-trait",
- "bincode",
- "dotenv",
- "eth-sparse-mpt",
- "futures",
- "itertools 0.13.0",
- "jsonrpsee",
- "lazy_static",
- "rand",
- "reth-db",
- "reth-primitives",
- "reth-revm",
- "reth-rpc-api",
- "reth-trie",
- "reth-trie-common",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "linked-hash-map"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7052,6 +7022,36 @@ dependencies = [
  "regex",
  "rustversion",
  "time",
+]
+
+[[package]]
+name = "verified_contract_state"
+version = "0.1.0"
+dependencies = [
+ "alloy-json-rpc",
+ "alloy-primitives",
+ "alloy-rlp",
+ "alloy-rpc-types",
+ "alloy-rpc-types-eth",
+ "alloy-trie",
+ "async-trait",
+ "bincode",
+ "dotenv",
+ "eth-sparse-mpt",
+ "futures",
+ "itertools 0.13.0",
+ "jsonrpsee",
+ "lazy_static",
+ "rand",
+ "reth-db",
+ "reth-primitives",
+ "reth-revm",
+ "reth-rpc-api",
+ "reth-trie",
+ "reth-trie-common",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

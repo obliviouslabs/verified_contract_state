@@ -1,5 +1,5 @@
 [package]
-name = "light_contract_storage"
+name = "verified_contract_state"
 version = "0.1.0"
 edition = "2021"
 
