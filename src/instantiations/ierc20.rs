@@ -1,5 +1,5 @@
 use std::{collections::{HashMap, HashSet}, sync::{Arc, Mutex}};
-use alloy_rpc_types::{serde_helpers::JsonStorageKey, BlockId};
+use alloy_rpc_types::{serde_helpers::JsonStorageKey, state, BlockId};
 use async_trait::async_trait;
 
 use alloy_primitives::{Address, B256};
@@ -13,11 +13,12 @@ pub trait IERC20MemoryHandler {
   async fn initialize<T: ProviderTrait>(
     &mut self,
     provider: Arc<T>
-  ) -> Result<(), ThreadSafeError>;
+  ) -> Result<(u64, B256), ThreadSafeError>;
   async fn update<T: ProviderTrait>(
     &mut self,
     provider: Arc<T>,
-    target_block: u64
+    target_block: u64,
+    state_root: B256
   ) -> Result<HashMap<B256,B256>, ThreadSafeError>;
 }
 
@@ -83,7 +84,7 @@ macro_rules! implement_getters {
 }
 
 
-pub trait IERC20MemoryHandlerCertain: IERC20MemoryHandler {
+pub trait IERC20MemoryHandlerCertain: IERC20MemoryHandler + Send {
   type StateType: MemoryUpdateTrait + Send;
   fn new() -> Self;
   fn start_block() -> u64;
@@ -106,12 +107,12 @@ pub trait IERC20MemoryHandlerCertain: IERC20MemoryHandler {
 #[async_trait]
 impl<INSTANCE> IERC20MemoryHandler for INSTANCE 
 where
-  INSTANCE: IERC20MemoryHandlerCertain + Send
+  INSTANCE: IERC20MemoryHandlerCertain
 {
   async fn initialize<T: ProviderTrait>(
       &mut self,
       provider: Arc<T>
-    ) -> Result<(), ThreadSafeError> {
+    ) -> Result<(u64, B256), ThreadSafeError> {
       let current_block: u64 =
       provider.block_number()
           .await
@@ -119,9 +120,7 @@ where
           .try_into()
           .unwrap();
 
-      // let current_block = 8_000_000;
       println!("Current block: {}", current_block);
-      // let current_block = 12_000_000;
 
       match self.load_state(current_block) {
         Ok(_) => {
@@ -138,19 +137,21 @@ where
       }
       
       let should_save = true;
+      let state_root = get_state_root(&*provider.clone(), current_block).await?;
 
-      let _updates = self.update(provider, current_block).await?;
+      let _updates = self.update(provider, current_block, state_root).await?;
 
       if should_save {
         let _ = self.save_state();
       }
-      Ok(())
+      Ok((current_block, state_root))
   }
 
   async fn update<T: ProviderTrait>(
       &mut self,
       provider: Arc<T>,
-      target_block: u64
+      target_block: u64,
+      state_root: B256
     ) -> Result<HashMap<B256,B256>, ThreadSafeError> {
       CHECK!(target_block >= self.current_block());
       if target_block == self.current_block() {
@@ -161,7 +162,6 @@ where
       println!("Target block: {}", target_block);
   
       let block_id = BlockId::from(target_block);
-      let state_root = get_state_root(&*provider.clone(), target_block).await?;
       let storage_root = get_storage_root(provider.clone(), block_id, state_root, Self::contract_address()).await?;
       
       let state_updates = Arc::new(Mutex::new(INSTANCE::StateType::new()));

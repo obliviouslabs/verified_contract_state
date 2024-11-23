@@ -42,7 +42,8 @@ async fn main() -> Result<(), ThreadSafeError> {
 			.unwrap()
 			.try_into()
 			.unwrap();
-		mem.update(client.clone(), currrent_block).await?;
+		let state_root = storage_utils::get_state_root(&*client.clone(), currrent_block).await?;
+		mem.update(client.clone(), currrent_block, state_root).await?;
 		tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
 	}
 
