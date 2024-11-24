@@ -5,18 +5,18 @@ edition = "2021"
 
 [dependencies]
 
-reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", features = ["client"], commit = "7ae8ce1d0096a32211cda406c1f1176cfc217b43" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth", commit = "7ae8ce1d0096a32211cda406c1f1176cfc217b43"}
-reth-trie-common = { git = "https://github.com/paradigmxyz/reth", commit = "7ae8ce1d0096a32211cda406c1f1176cfc217b43"}
-reth-trie = { git = "https://github.com/paradigmxyz/reth", commit = "7ae8ce1d0096a32211cda406c1f1176cfc217b43"}
-reth-db = { git = "https://github.com/paradigmxyz/reth", commit = "7ae8ce1d0096a32211cda406c1f1176cfc217b43"}
-reth-revm = { git = "https://github.com/paradigmxyz/reth", commit = "7ae8ce1d0096a32211cda406c1f1176cfc217b43" }
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", features = ["client"], tag = "v1.1.2" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.2"}
+reth-trie-common = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.2"}
+reth-trie = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.2"}
+reth-db = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.2"}
+reth-revm = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.2" }
 
 alloy-rlp = "0.3.4"
-alloy-rpc-types = "0.6.0"
+alloy-rpc-types = "0.6.4"
 alloy-trie = { version = "0.7.3", default-features = false }
-alloy-rpc-types-eth = "0.6.0"
-alloy-json-rpc = "0.6.0"
+alloy-rpc-types-eth = "0.6.4"
+alloy-json-rpc = "0.6.4"
 alloy-primitives = { version = "0.8.11", default-features = false, features = ["asm-keccak"] }
 
 jsonrpsee = "0.24.6"
