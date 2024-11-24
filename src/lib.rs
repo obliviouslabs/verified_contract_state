@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use alloy_primitives::{B256, U256};
+use alloy_primitives::{Address, B256, U256};
 use alloy_rpc_types::{Block, Transaction};
 use instantiations::ierc20::{CertainMemoryHandler, IERC20MemoryHandler, IERC20MemoryHandlerCertain, MemoryUpdateTrait};
 use reth_primitives::Receipt;
@@ -58,5 +58,9 @@ impl<T: IERC20MemoryHandlerCertain> StateVerifier<T> {
     self.block_id = target_block;
     self.storage_root = state_root;
     Ok(())
+  }
+
+  pub fn contract_address(&self) -> Address {
+    T::contract_address()
   }
 }
