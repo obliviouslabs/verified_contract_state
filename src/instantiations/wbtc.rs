@@ -1,40 +1,51 @@
-use crate::{bail_error, checkpoints::{get_most_recent_checkpoint, save_checkpoint}, eventlogs::LogEvent, implement_getters, solidity_memory::{add_2d_mapping_addresses, add_mapping_addresses, add_static_array_addresses, add_string_addresses, get_2d_mapping_address, get_mapping_address}, tprintln, utils::{b256, ThreadSafeError}};
+use crate::{
+  bail_error,
+  checkpoints::{get_most_recent_checkpoint, save_checkpoint},
+  eventlogs::LogEvent,
+  implement_getters,
+  solidity_memory::{
+    add_2d_mapping_addresses, add_mapping_addresses, add_static_array_addresses,
+    add_string_addresses, get_2d_mapping_address, get_mapping_address,
+  },
+  tprintln,
+  utils::{b256, ThreadSafeError},
+};
 use std::collections::{HashMap, HashSet};
 
 use eth_sparse_mpt::sparse_mpt::DiffTrie;
-use reth_revm::primitives::{keccak256, B256,  Address};
 use lazy_static::lazy_static;
+use reth_revm::primitives::{keccak256, Address, B256};
 use std::io::Read;
 
 use reth_primitives::LogData;
 
 use super::ierc20::{CertainMemoryHandler, IERC20MemoryHandlerCertain, MemoryUpdateTrait};
 
-
 lazy_static! {
   static ref TRANSFER_EVENT_SIGNATURE: B256 = keccak256("Transfer(address,address,uint256)");
   static ref APPROVAL_EVENT_SIGNATURE: B256 = keccak256("Approval(address,address,uint256)");
   static ref PAUSE_EVENT_SIGNATURE: B256 = keccak256("Pause()");
   static ref UNPAUSE_EVENT_SIGNATURE: B256 = keccak256("Unpause()");
-  static ref OWNERSHIP_TRANSFERRED_EVENT_SIGNATURE: B256 = keccak256("OwnershipTransferred(address,address)");
+  static ref OWNERSHIP_TRANSFERRED_EVENT_SIGNATURE: B256 =
+    keccak256("OwnershipTransferred(address,address)");
   static ref BURN_EVENT_SIGNATURE: B256 = keccak256("Burn(address,uint256)");
   static ref MINT_EVENT_SIGNATURE: B256 = keccak256("Mint(address,uint256)");
-
-  static ref WBTC_OWNERS: [B256; 2] = [ 
-    "0x0000000000000000000000008b41783ad99fcbeb8d575fa7a7b5a04fa0b8d80b".parse::<B256>().unwrap(), 
-    "0x000000000000000000000000ca06411bd7a7296d7dbdd0050dfc846e95febeb7".parse::<B256>().unwrap()];
-
+  static ref WBTC_OWNERS: [B256; 2] = [
+    "0x0000000000000000000000008b41783ad99fcbeb8d575fa7a7b5a04fa0b8d80b".parse::<B256>().unwrap(),
+    "0x000000000000000000000000ca06411bd7a7296d7dbdd0050dfc846e95febeb7".parse::<B256>().unwrap()
+  ];
   static ref START_BLOCK: u64 = 6_766_284;
-  static ref CONTRACT_ADDRESS: Address = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599".parse().unwrap();  
+  static ref CONTRACT_ADDRESS: Address =
+    "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599".parse().unwrap();
 }
 
 #[derive(Clone)]
 pub struct WBTCMemoryUpdates {
   pub account_owners: HashSet<B256>,
-  pub allowed_pairs: HashSet<(B256,B256)>,
+  pub allowed_pairs: HashSet<(B256, B256)>,
 
   pub senders_used: HashSet<B256>,
-  pub used_pairs: HashSet<(B256,B256)>,  
+  pub used_pairs: HashSet<(B256, B256)>,
 }
 
 impl MemoryUpdateTrait for WBTCMemoryUpdates {
@@ -52,7 +63,7 @@ impl MemoryUpdateTrait for WBTCMemoryUpdates {
   fn parse_log(&mut self, log: &LogEvent) -> Result<(), ThreadSafeError> {
     let top = B256::from(log.topics()[0].0);
     // println!("Log: {:?}", log);
-    
+
     if top == *TRANSFER_EVENT_SIGNATURE {
       let ld = LogData::from(log.data().clone());
       let from = B256::from(log.topics()[1].0);
@@ -86,10 +97,10 @@ impl MemoryUpdateTrait for WBTCMemoryUpdates {
       //
     } else {
       println!("Log: {:?}", log);
-      println!("top0: {:?}" , top);
+      println!("top0: {:?}", top);
       bail_error!("Unknown event signature");
     }
-    
+
     Ok(())
   }
 
@@ -100,9 +111,14 @@ impl MemoryUpdateTrait for WBTCMemoryUpdates {
     self.used_pairs.extend(other.used_pairs);
   }
 
-  
   fn get_addresses(&self, base: &WBTCMemoryUpdates) -> HashSet<B256> {
-    tprintln!("Getting addressses with: {} account owners, {} allowed pairs, {} senders, {} all pairs", self.account_owners.len(), self.allowed_pairs.len(), self.senders_used.len(), self.used_pairs.len());
+    tprintln!(
+      "Getting addressses with: {} account owners, {} allowed pairs, {} senders, {} all pairs",
+      self.account_owners.len(),
+      self.allowed_pairs.len(),
+      self.senders_used.len(),
+      self.used_pairs.len()
+    );
     let mut ret = HashSet::new();
     add_mapping_addresses("_balanceOf", &mut ret, b256(0), self.account_owners.iter());
     add_static_array_addresses("_totalSupply", &mut ret, b256(1), 1);
@@ -113,7 +129,7 @@ impl MemoryUpdateTrait for WBTCMemoryUpdates {
     add_static_array_addresses("_lots", &mut ret, b256(5), 1);
     add_static_array_addresses("_pendingOwner", &mut ret, b256(6), 1);
 
-    let mut actual_pairs = HashSet::new();    
+    let mut actual_pairs = HashSet::new();
 
     const FULL: bool = true;
     if FULL {
@@ -121,7 +137,7 @@ impl MemoryUpdateTrait for WBTCMemoryUpdates {
         if self.senders_used.contains(from) {
           actual_pairs.insert((from.clone(), to.clone()));
         }
-      }      
+      }
     } else {
       for (from, to) in self.used_pairs.iter() {
         if base.allowed_pairs.contains(&(from.clone(), to.clone())) {
@@ -134,11 +150,9 @@ impl MemoryUpdateTrait for WBTCMemoryUpdates {
 
     ret
   }
-  
 }
 
 impl WBTCMemoryUpdates {
-
   fn init(&mut self) {
     for account in WBTC_OWNERS.iter() {
       self.register_account_owner(*account);
@@ -169,8 +183,8 @@ impl WBTCMemoryUpdates {
     self.init();
   }
 
-  pub fn cleanup(&mut self, nonzero: &HashMap<B256,B256>) {
-    let slot =  b256(2);
+  pub fn cleanup(&mut self, nonzero: &HashMap<B256, B256>) {
+    let slot = b256(2);
     for (k, v) in self.allowed_pairs.clone().iter() {
       let addr = get_2d_mapping_address(&slot, k, v);
       if !nonzero.contains_key(&addr) {
@@ -178,7 +192,7 @@ impl WBTCMemoryUpdates {
       }
     }
 
-    let slot =  b256(0);
+    let slot = b256(0);
     for k in self.account_owners.clone().iter() {
       let addr = get_mapping_address(&slot, k);
       if !nonzero.contains_key(&addr) {
@@ -192,21 +206,27 @@ impl IERC20MemoryHandlerCertain for CertainMemoryHandler<WBTCMemoryUpdates> {
   type StateType = WBTCMemoryUpdates;
   implement_getters!(WBTCMemoryUpdates);
 
-fn load_state(&mut self, current_block: u64) -> Result<(), ThreadSafeError> {
+  fn load_state(&mut self, current_block: u64) -> Result<(), ThreadSafeError> {
     let state_checkpoint = get_most_recent_checkpoint(Self::tag().as_str(), current_block)?;
-    (self.memory, self.state.allowed_pairs) = state_checkpoint.read::<(
-      HashMap<B256,B256>
-    , HashSet<(B256,B256)>
-    )>()?;
+    (self.memory, self.state.allowed_pairs) =
+      state_checkpoint.read::<(HashMap<B256, B256>, HashSet<(B256, B256)>)>()?;
     self.current_block = state_checkpoint.block;
-    println!("Restored state from checkpoint at block: {} with {} addresses and {} allowed_pairs", self.current_block, self.memory.len(), self.state.allowed_pairs.len());
+    println!(
+      "Restored state from checkpoint at block: {} with {} addresses and {} allowed_pairs",
+      self.current_block,
+      self.memory.len(),
+      self.state.allowed_pairs.len()
+    );
     Ok(())
   }
 
   fn save_state(&mut self) -> Result<(), ThreadSafeError> {
     self.state.cleanup(&self.memory);
-    save_checkpoint(Self::tag().as_str(), self.current_block, &(&self.memory, &self.state.allowed_pairs))?;
+    save_checkpoint(
+      Self::tag().as_str(),
+      self.current_block,
+      &(&self.memory, &self.state.allowed_pairs),
+    )?;
     Ok(())
   }
-
 }

@@ -1,39 +1,47 @@
-use crate::{bail_error, checkpoints::{get_most_recent_checkpoint, save_checkpoint}, eventlogs::LogEvent, implement_getters, solidity_memory::{add_2d_mapping_addresses, add_mapping_addresses, add_static_array_addresses, add_string_addresses, get_2d_mapping_address, get_mapping_address}, tprintln, utils::{b256, ThreadSafeError}};
+use crate::{
+  bail_error,
+  checkpoints::{get_most_recent_checkpoint, save_checkpoint},
+  eventlogs::LogEvent,
+  implement_getters,
+  solidity_memory::{
+    add_2d_mapping_addresses, add_mapping_addresses, add_static_array_addresses,
+    add_string_addresses, get_2d_mapping_address, get_mapping_address,
+  },
+  tprintln,
+  utils::{b256, ThreadSafeError},
+};
 use std::collections::{HashMap, HashSet};
 
 use eth_sparse_mpt::sparse_mpt::DiffTrie;
-use reth_revm::primitives::{keccak256, B256,  Address};
 use lazy_static::lazy_static;
+use reth_revm::primitives::{keccak256, Address, B256};
 use std::io::Read;
 
 use reth_primitives::LogData;
 
 use super::ierc20::{CertainMemoryHandler, IERC20MemoryHandlerCertain, MemoryUpdateTrait};
 
-
-
 lazy_static! {
   static ref TRANSFER_EVENT_SIGNATURE: B256 = keccak256("Transfer(address,address,uint256)");
   static ref APPROVAL_EVENT_SIGNATURE: B256 = keccak256("Approval(address,address,uint256)");
-  static ref SHIB_OWNERS: [B256; 1] = ["0x000000000000000000000000B8F226DDB7BC672E27DFFB67E4ADABFA8C0DFA08".parse::<B256>().unwrap(),
+  static ref SHIB_OWNERS: [B256; 1] = [
+    "0x000000000000000000000000B8F226DDB7BC672E27DFFB67E4ADABFA8C0DFA08".parse::<B256>().unwrap(),
   ];
-
-  static ref CONTRACT_ADDRESS: Address = "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE".parse().unwrap();
+  static ref CONTRACT_ADDRESS: Address =
+    "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE".parse().unwrap();
   static ref START_BLOCK: u64 = 10_569_013;
 }
 
 #[derive(Clone)]
 pub struct SHIBMemoryUpdates {
   pub account_owners: HashSet<B256>,
-  pub allowed_pairs: HashSet<(B256,B256)>,
+  pub allowed_pairs: HashSet<(B256, B256)>,
 }
 
 impl MemoryUpdateTrait for SHIBMemoryUpdates {
   fn new() -> Self {
-    let mut ret = SHIBMemoryUpdates {
-      account_owners: HashSet::new(),
-      allowed_pairs: HashSet::new(),
-    };
+    let mut ret =
+      SHIBMemoryUpdates { account_owners: HashSet::new(), allowed_pairs: HashSet::new() };
     ret.init();
     ret
   }
@@ -42,7 +50,7 @@ impl MemoryUpdateTrait for SHIBMemoryUpdates {
     let top = B256::from(log.topics()[0].0);
     // println!("Log: {:?}", log);
     // println!("top0: {:?}" , top);
-    
+
     if top == *TRANSFER_EVENT_SIGNATURE {
       let ld = LogData::from(log.data().clone());
       let from = B256::from(log.topics()[1].0);
@@ -64,12 +72,12 @@ impl MemoryUpdateTrait for SHIBMemoryUpdates {
       self.register_allowed_pair(owner, spender);
     } else {
       println!("Log: {:?}", log);
-      println!("top0: {:?}" , top);
+      println!("top0: {:?}", top);
       println!("AES : {:?}", *APPROVAL_EVENT_SIGNATURE);
       println!("TES : {:?}", *TRANSFER_EVENT_SIGNATURE);
       bail_error!("Unknown event signature");
     }
-    
+
     Ok(())
   }
 
@@ -79,7 +87,11 @@ impl MemoryUpdateTrait for SHIBMemoryUpdates {
   }
 
   fn get_addresses(&self, _base: &SHIBMemoryUpdates) -> HashSet<B256> {
-    tprintln!("Getting addressses with: {} account owners, allowed pairs: {}", self.account_owners.len(), self.allowed_pairs.len());
+    tprintln!(
+      "Getting addressses with: {} account owners, allowed pairs: {}",
+      self.account_owners.len(),
+      self.allowed_pairs.len()
+    );
     let mut ret = HashSet::new();
     add_mapping_addresses("_balanceOf", &mut ret, b256(0), self.account_owners.iter());
     add_2d_mapping_addresses("_allowance", &mut ret, b256(1), self.allowed_pairs.iter());
@@ -110,8 +122,8 @@ impl SHIBMemoryUpdates {
     self.allowed_pairs.insert((owner, spender));
   }
 
-  pub fn cleanup(&mut self, nonzero: &HashMap<B256,B256>) {
-    let slot =  b256(1);
+  pub fn cleanup(&mut self, nonzero: &HashMap<B256, B256>) {
+    let slot = b256(1);
     for (k, v) in self.allowed_pairs.clone().iter() {
       let addr = get_2d_mapping_address(&slot, k, v);
       if !nonzero.contains_key(&addr) {
@@ -119,7 +131,7 @@ impl SHIBMemoryUpdates {
       }
     }
 
-    let slot =  b256(0);
+    let slot = b256(0);
     for k in self.account_owners.clone().iter() {
       let addr = get_mapping_address(&slot, k);
       if !nonzero.contains_key(&addr) {
@@ -127,21 +139,23 @@ impl SHIBMemoryUpdates {
       }
     }
   }
-
 }
 
 impl IERC20MemoryHandlerCertain for CertainMemoryHandler<SHIBMemoryUpdates> {
   type StateType = SHIBMemoryUpdates;
 
   implement_getters!(SHIBMemoryUpdates);
-  
+
   fn load_state(&mut self, current_block: u64) -> Result<(), ThreadSafeError> {
     let state_checkpoint = get_most_recent_checkpoint(Self::tag().as_str(), current_block)?;
-    self.memory = state_checkpoint.read::<
-          HashMap<B256,B256>
-        >()?;
+    self.memory = state_checkpoint.read::<HashMap<B256, B256>>()?;
     self.current_block = state_checkpoint.block;
-    println!("Restored state from checkpoint at block: {} with {} addresses and {} allowed_pairs", self.current_block, self.memory.len(), self.state.allowed_pairs.len());
+    println!(
+      "Restored state from checkpoint at block: {} with {} addresses and {} allowed_pairs",
+      self.current_block,
+      self.memory.len(),
+      self.state.allowed_pairs.len()
+    );
     Ok(())
   }
 

@@ -15,9 +15,9 @@ macro_rules! bail_error {
 #[macro_export]
 macro_rules! CHECK {
   ($cond:expr) => {
-      if !$cond {
-          crate::bail_error!("Check failed: {:?}", stringify!($cond));
-      }
+    if !$cond {
+      crate::bail_error!("Check failed: {:?}", stringify!($cond));
+    }
   };
 }
 
@@ -38,18 +38,12 @@ pub fn b256(val: u64) -> B256 {
 }
 
 pub trait ProviderTrait:
-    EthApiClient<Transaction, Block, Receipt>
-    + Send
-    + Sync
-    + EthFilterApiClient<u64>
+  EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>
 {
 }
 
 impl<T> ProviderTrait for T where
-    T: EthApiClient<Transaction, Block, Receipt>
-        + Send
-        + Sync
-        + EthFilterApiClient<u64>
+  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>
 {
 }
 

@@ -1,23 +1,23 @@
+use crate::checkpoints::{get_specific_checkpoint, save_checkpoint};
+use crate::utils::ThreadSafeError;
+use crate::{tprintln, CHECK};
+use alloy_rpc_types::Filter;
 use alloy_rpc_types::Log;
+use alloy_rpc_types::{Block, Transaction};
 use futures::stream::FuturesOrdered;
 use futures::StreamExt;
+use rand::Rng;
+use reth_primitives::{LogData, Receipt};
+use reth_revm::primitives::{Address, B256};
+use reth_rpc_api::clients::EthApiClient;
 use reth_rpc_api::EthFilterApiClient;
 use serde::{Deserialize, Serialize};
-use tokio::sync::Semaphore;
-use tokio::time::sleep;
-use rand::Rng;
 use std::cmp::{max, min};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use reth_rpc_api::clients::EthApiClient;
-use alloy_rpc_types::{Block, Transaction};
-use reth_primitives::{LogData, Receipt};
-use reth_revm::primitives::{Address, B256};
-use alloy_rpc_types::Filter;
-use crate::checkpoints::{get_specific_checkpoint, save_checkpoint};
-use crate::{tprintln, CHECK};
-use crate::utils::ThreadSafeError;
+use tokio::sync::Semaphore;
+use tokio::time::sleep;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LogEvent {
@@ -58,26 +58,21 @@ impl LogEvent {
   }
 }
 
-
-pub async fn get_log_batch<T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>>(
+pub async fn get_log_batch<
+  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>,
+>(
   provider: &T,
-  contract_address: Address,    
+  contract_address: Address,
   start_block: u64,
   end_block: u64,
 ) -> Result<Vec<LogEvent>, ThreadSafeError> {
   println!("Getting logs from block {} to {}", start_block, end_block);
-  let filter = Filter::new()
-      .address(contract_address)
-      .from_block(start_block)
-      .to_block(end_block);
+  let filter = Filter::new().address(contract_address).from_block(start_block).to_block(end_block);
 
-  let logs = provider.logs(filter).await?.into_iter().map(|log| {
-    LogEvent::from(log)
-  }).collect();
+  let logs = provider.logs(filter).await?.into_iter().map(|log| LogEvent::from(log)).collect();
 
   Ok(logs)
 }
-
 
 // UNDONE() this is using manual tunning per contract for initilaization based on the log size (large for USDT, small for SHIB)
 const LOG_CHUNK_SIZE: u64 = 100_000;
@@ -88,18 +83,19 @@ const MIN_SIZE: u64 = 10;
 const MAX_SIZE: u64 = 10000;
 
 pub fn is_checkpointable_range(start_block: u64, end_block: u64) -> bool {
-     (start_block % LOG_CHUNK_SIZE == 0)
-  && ((end_block - start_block + 1) == LOG_CHUNK_SIZE)
+  (start_block % LOG_CHUNK_SIZE == 0) && ((end_block - start_block + 1) == LOG_CHUNK_SIZE)
 }
 
-pub async fn get_log_batch_task<T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>>(
+pub async fn get_log_batch_task<
+  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>,
+>(
   provider: &T,
-  contract_address: Address,    
+  contract_address: Address,
   start_block: u64,
   end_block: u64,
 ) -> Result<Vec<LogEvent>, ThreadSafeError> {
   tprintln!("Getting logs from block {} to {}", start_block, end_block);
-  let tag = format!("{}.Logs.{}",  contract_address, LOG_CHUNK_SIZE);
+  let tag = format!("{}.Logs.{}", contract_address, LOG_CHUNK_SIZE);
   if start_block / LOG_CHUNK_SIZE == end_block / LOG_CHUNK_SIZE {
     let range_block = start_block - (start_block % LOG_CHUNK_SIZE);
     let cpt = get_specific_checkpoint(tag.as_str(), range_block);
@@ -111,32 +107,37 @@ pub async fn get_log_batch_task<T: EthApiClient<Transaction, Block, Receipt> + S
           return ret;
         } else {
           tprintln!("Returning modified logs");
-          return Ok(ret?.into_iter().filter(|log| {
-            let bn = log.block_number;
-            bn >= start_block && bn <= end_block
-          }).collect());
+          return Ok(
+            ret?
+              .into_iter()
+              .filter(|log| {
+                let bn = log.block_number;
+                bn >= start_block && bn <= end_block
+              })
+              .collect(),
+          );
         }
-      },
-      Err(_) => {
       }
+      Err(_) => {}
     }
   }
 
   let mut ret = Vec::new();
 
   let mut oks = 0;
-  
+
   let mut curr_block = start_block;
   let mut lastsize = MAX_SIZE;
-  
+
   let mut last_request_time = std::time::Instant::now();
 
   while curr_block <= end_block {
     let currsize = min(lastsize, end_block - curr_block);
-    
+
     {
       let now = std::time::Instant::now();
-      let elapsed: u64 = now.duration_since(last_request_time).as_millis().try_into().unwrap_or(THROTTLE_SLEEP_MS);
+      let elapsed: u64 =
+        now.duration_since(last_request_time).as_millis().try_into().unwrap_or(THROTTLE_SLEEP_MS);
       if elapsed < THROTTLE_SLEEP_MS {
         let sleep_time = THROTTLE_SLEEP_MS - elapsed;
         sleep(Duration::from_millis(sleep_time as u64)).await;
@@ -144,41 +145,40 @@ pub async fn get_log_batch_task<T: EthApiClient<Transaction, Block, Receipt> + S
       last_request_time = std::time::Instant::now();
       let provider_ = provider;
       // sleep(Duration::from_millis(500)).await;
-      let logs_ = get_log_batch(provider_, contract_address, curr_block, curr_block + currsize).await;
+      let logs_ =
+        get_log_batch(provider_, contract_address, curr_block, curr_block + currsize).await;
       if let Err(_e) = &logs_ {
-          let thread_id = thread::current().id();
+        let thread_id = thread::current().id();
 
-          let e_str = logs_.err().unwrap().to_string();
-          if e_str.contains("429") {
-            tprintln!("[{:?}] Throttled: {:?}", thread_id, e_str);
-            let sleep_duration = Duration::from_millis(rand::thread_rng().gen_range(100..=1000));
-            sleep(sleep_duration).await;
-            continue;
-          } else if e_str.contains("Log response size exceeded"){
-            tprintln!("[{:?}] Log Size Exceeded: {:?}", thread_id, e_str);
-          } else {
-            tprintln!("[{:?}] Unknown error getting logs: {:?}", thread_id, e_str);
-          }
-
-          // puts erros as string in a string:
-          // match e {
-          //   Error::Transport(web3::transports::http::Error::Rejected { status_code: 429 })
-          // }
-          
-
-
-          lastsize = currsize/2;
-          lastsize = max(lastsize, MIN_SIZE);
-          oks = min(0, oks-1);
+        let e_str = logs_.err().unwrap().to_string();
+        if e_str.contains("429") {
+          tprintln!("[{:?}] Throttled: {:?}", thread_id, e_str);
+          let sleep_duration = Duration::from_millis(rand::thread_rng().gen_range(100..=1000));
+          sleep(sleep_duration).await;
           continue;
+        } else if e_str.contains("Log response size exceeded") {
+          tprintln!("[{:?}] Log Size Exceeded: {:?}", thread_id, e_str);
+        } else {
+          tprintln!("[{:?}] Unknown error getting logs: {:?}", thread_id, e_str);
+        }
+
+        // puts erros as string in a string:
+        // match e {
+        //   Error::Transport(web3::transports::http::Error::Rejected { status_code: 429 })
+        // }
+
+        lastsize = currsize / 2;
+        lastsize = max(lastsize, MIN_SIZE);
+        oks = min(0, oks - 1);
+        continue;
       }
       ret.extend(logs_?);
     }
 
     if oks >= 3 {
-      lastsize = min(currsize + (currsize>>1), MAX_SIZE);
+      lastsize = min(currsize + (currsize >> 1), MAX_SIZE);
     }
-    oks = max(oks, oks+1);
+    oks = max(oks, oks + 1);
     curr_block += currsize + 1;
   }
 
@@ -197,10 +197,11 @@ pub async fn apply_to_logs<'a, T, F>(
   contract_address: Address,
   start_block: u64,
   end_block: u64,
-  f: F
+  f: F,
 ) -> Result<(), ThreadSafeError>
-where T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>,
-      F: Fn(Vec<LogEvent>) -> Result<(), ThreadSafeError> + Send + Sync + 'a
+where
+  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>,
+  F: Fn(Vec<LogEvent>) -> Result<(), ThreadSafeError> + Send + Sync + 'a,
 {
   tprintln!("Getting logs between {} and {}", start_block, end_block);
 
@@ -208,19 +209,17 @@ where T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiC
   let semaphore = Arc::new(Semaphore::new(CONCURENCY_LIMIT));
 
   let mut range_start = start_block;
-  
-  while range_start <= end_block {
 
-  // for range_start in (start_block..(end_block+1)).step_by(LOG_CHUNK_SIZE as usize) {
-    let range_end = 
-      if range_start % LOG_CHUNK_SIZE == 0 {
-        (range_start + (LOG_CHUNK_SIZE - 1) as u64).min(end_block)
-      } else {
-        (range_start + (LOG_CHUNK_SIZE - 1) - (range_start % LOG_CHUNK_SIZE) as u64).min(end_block)
-      };    
+  while range_start <= end_block {
+    // for range_start in (start_block..(end_block+1)).step_by(LOG_CHUNK_SIZE as usize) {
+    let range_end = if range_start % LOG_CHUNK_SIZE == 0 {
+      (range_start + (LOG_CHUNK_SIZE - 1) as u64).min(end_block)
+    } else {
+      (range_start + (LOG_CHUNK_SIZE - 1) - (range_start % LOG_CHUNK_SIZE) as u64).min(end_block)
+    };
     let provider_clone = provider;
     let semaphore_clone = semaphore.clone();
-    
+
     tasks.push_back(async move {
       let mut attempt = 0;
       loop {
@@ -232,7 +231,7 @@ where T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiC
         match logs {
           Ok(logs) => {
             return logs;
-          },
+          }
           Err(_) => {
             attempt += 1;
             if attempt > 3 {
@@ -243,33 +242,36 @@ where T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiC
       }
     });
 
-    range_start = range_end+1;
+    range_start = range_end + 1;
   }
-  
+
   let errored = Arc::new(Mutex::new(false));
 
-  tasks.for_each_concurrent(CONCURENCY_LIMIT, |x| {    
-    let errored = errored.clone();
-    let f = &f;
-    async move {
-      let e = f(x);
-      if let Err(e) = e {
-        tprintln!("Error applying to log: {:?}", e);
-        *errored.lock().unwrap() = true;
+  tasks
+    .for_each_concurrent(CONCURENCY_LIMIT, |x| {
+      let errored = errored.clone();
+      let f = &f;
+      async move {
+        let e = f(x);
+        if let Err(e) = e {
+          tprintln!("Error applying to log: {:?}", e);
+          *errored.lock().unwrap() = true;
+        }
       }
-    }
-  }).await;
+    })
+    .await;
 
   CHECK!(!*errored.lock().unwrap());
 
   Ok(())
 }
 
-
-pub async fn get_logs_between<T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>>(
+pub async fn get_logs_between<
+  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>,
+>(
   provider: &T,
   contract_address: Address,
-  start_block: u64,  
+  start_block: u64,
   end_block: u64,
 ) -> Result<Vec<LogEvent>, ThreadSafeError> {
   let ret = Arc::new(Mutex::new(Vec::new()));
@@ -278,7 +280,8 @@ pub async fn get_logs_between<T: EthApiClient<Transaction, Block, Receipt> + Sen
   apply_to_logs(provider, contract_address, start_block, end_block, move |logs| {
     ret_clone.lock().unwrap().extend(logs);
     Ok(())
-  }).await?;
+  })
+  .await?;
 
   let rv = ret.lock().unwrap().clone();
 
