@@ -11,6 +11,8 @@ use crate::tprintln;
 use crate::utils::ThreadSafeError;
 use crate::CHECK;
 
+const CPT_BASE_DIR: &str = "checkpoints";
+
 #[derive(Clone, Default)]
 pub struct CheckPoint{
   pub block: u64,
@@ -46,7 +48,7 @@ pub fn save_checkpoint<T: Serialize>(
   const CAPACITY: usize = 100 * 1024 * 1024;
   tprintln!("Saving checkpoint for {} at block {}", tag, block);
 
-  let filename = format!("checkpoints/{}_{}_.cpt", tag, block);
+  let filename = format!("{}/{}_{}_.cpt", CPT_BASE_DIR, tag, block);
   let file = OpenOptions::new()
                 .write(true)
                 .create(true)
@@ -68,7 +70,7 @@ pub fn get_checkpoints_for_tag(
   tag: &str
 ) -> Result<Vec<CheckPoint>, ThreadSafeError> {
   tprintln!("Getting checkpoint for {}", tag);
-  let files: Vec<PathBuf> = fs::read_dir("checkpoints")?
+  let files: Vec<PathBuf> = fs::read_dir(CPT_BASE_DIR)?
     .filter_map(|res| res.ok().and_then(|e| {
       let path = e.path();      
       if e.file_type().ok()?.is_file() {

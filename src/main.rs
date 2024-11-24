@@ -26,7 +26,6 @@ use jsonrpsee::http_client::HttpClientBuilder;
 #[tokio::main]
 async fn main() -> Result<(), ThreadSafeError> {
 	dotenv().ok(); // Load the .env file
-
 	let geth_url = env::var("GETH_URL").expect("Infura URL must be set");
 
 	let client:Arc<jsonrpsee::http_client::HttpClient> =  Arc::new(HttpClientBuilder::default().build(geth_url)?);
