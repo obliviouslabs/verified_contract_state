@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::{Address, B256, U256};
+use alloy_rpc_types::Header;
 use alloy_rpc_types::{Block, Transaction};
 use instantiations::ierc20::{
   CertainMemoryHandler, IERC20MemoryHandler, IERC20MemoryHandlerCertain, MemoryUpdateTrait,
@@ -58,6 +59,7 @@ impl<T: IERC20MemoryHandlerCertain> StateVerifier<T> {
       Transaction,
       Block,
       Receipt,
+      Header
     >>::block_number(&*self.client)
     .await?;
     let target_block: u64 = target_block_number.try_into().unwrap();

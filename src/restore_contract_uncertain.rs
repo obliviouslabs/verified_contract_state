@@ -1,7 +1,7 @@
 // use crate::bail_error;
 use crate::tprintln;
 use crate::utils::ThreadSafeError;
-use alloy_rpc_types::EIP1186StorageProof;
+use alloy_rpc_types::{EIP1186StorageProof, Header};
 use futures::lock::Mutex;
 use std::sync::Arc;
 use std::time::Duration;
@@ -45,7 +45,7 @@ async fn restore_contract_memory_with_contract_root_thread(
 }
 
 async fn restore_contract_memory_with_contract_root<
-  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync,
+  T: EthApiClient<Transaction, Block, Receipt, Header> + Send + Sync,
 >(
   provider: Arc<T>,
   contract_address: Address,
@@ -140,7 +140,7 @@ async fn restore_contract_memory_with_contract_root<
 }
 
 pub async fn restore_contract_memory_uncertain<
-  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync,
+  T: EthApiClient<Transaction, Block, Receipt, Header> + Send + Sync,
 >(
   provider: Arc<T>,
   contract_address: Address,

@@ -8,6 +8,7 @@ pub mod solidity_memory;
 pub mod storage_utils;
 pub mod utils;
 
+use alloy_rpc_types::Header;
 use dotenv::dotenv;
 use instantiations::ierc20::{
   CertainMemoryHandler, IERC20MemoryHandler, IERC20MemoryHandlerCertain,
@@ -25,7 +26,7 @@ use std::env;
 async fn main() -> Result<(), ThreadSafeError> {
   dotenv().ok(); // Load the .env file
   let geth_url = env::var("GETH_URL").expect("Infura URL must be set");
-
+  // alcht_yItiKw7kj3D5q5WJEudPbZzhOw5GcQ
   let client: Arc<jsonrpsee::http_client::HttpClient> =
     Arc::new(HttpClientBuilder::default().build(geth_url)?);
 
@@ -39,6 +40,7 @@ async fn main() -> Result<(), ThreadSafeError> {
       Transaction,
       Block,
       Receipt,
+      Header
     >>::block_number(&*client)
     .await
     .unwrap()

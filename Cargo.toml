@@ -5,33 +5,32 @@ edition = "2021"
 
 [dependencies]
 
-reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", features = ["client"], tag = "v1.1.2" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.2"}
-reth-trie-common = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.2"}
-reth-trie = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.2"}
-reth-db = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.2"}
-reth-revm = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.2" }
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", features = ["client"], tag = "v1.2.0" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", tag = "v1.2.0"}
+reth-trie-common = { git = "https://github.com/paradigmxyz/reth", tag = "v1.2.0"}
+reth-trie = { git = "https://github.com/paradigmxyz/reth", tag = "v1.2.0"}
+reth-db = { git = "https://github.com/paradigmxyz/reth", tag = "v1.2.0"}
+reth-revm = { git = "https://github.com/paradigmxyz/reth", tag = "v1.2.0" }
 
-alloy-rlp = "0.3.4"
-alloy-rpc-types = "0.6.4"
-alloy-trie = { version = "0.7.3", default-features = false }
-alloy-rpc-types-eth = "0.6.4"
-alloy-json-rpc = "0.6.4"
-alloy-primitives = { version = "0.8.11", default-features = false, features = ["asm-keccak"] }
+alloy-rlp = "0.3.10"
+alloy-rpc-types = "0.11.1"
+alloy-trie = "0.7"
+alloy-rpc-types-eth = "0.11.1"
+alloy-json-rpc = "0.11.1"
+alloy-primitives = { version = "0.8.15", default-features = false, features = ["asm-keccak"] }
 
-jsonrpsee = "0.24.6"
+jsonrpsee = "0.24.4"
 
-# eth-sparse-mpt = { path = "../eth-sparse-mpt" }
-eth-sparse-mpt = { git = "https://github.com/xtrm0/eth-sparse-mpt" }
+eth-sparse-mpt = { git = "https://github.com/flashbots/rbuilder.git", rev="d82e9da68b771d3c5d3ec218563d4bac7857f2ce" }
 
-tokio = { version = "1.41.1", features = ["full"] }
+tokio = { version = "1.40.0", features = ["full"] }
 futures = "0.3.31"
 dotenv = "0.15"
-lazy_static = "1.5.0"
+lazy_static = "1.4.0"
 rand = "0.8.5"
 itertools = "0.13.0"
-serde = { version = "1.0.214", features = ["derive"] }
-serde_json = "1.0.132"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
 bincode = { version = "1.3.3" }
 
 async-trait = "0.1.83"

@@ -1,5 +1,5 @@
 use alloy_primitives::{B256, U256};
-use alloy_rpc_types::{Block, Receipt, Transaction};
+use alloy_rpc_types::{Block, Receipt, Transaction, Header};
 use reth_rpc_api::{EthApiClient, EthFilterApiClient};
 
 #[macro_export]
@@ -38,12 +38,12 @@ pub fn b256(val: u64) -> B256 {
 }
 
 pub trait ProviderTrait:
-  EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>
+  EthApiClient<Transaction, Block, Receipt, Header> + Send + Sync + EthFilterApiClient<u64>
 {
 }
 
 impl<T> ProviderTrait for T where
-  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>
+  T: EthApiClient<Transaction, Block, Receipt, Header> + Send + Sync + EthFilterApiClient<u64>
 {
 }
 

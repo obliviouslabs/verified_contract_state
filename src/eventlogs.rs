@@ -1,7 +1,7 @@
 use crate::checkpoints::{get_specific_checkpoint, save_checkpoint};
 use crate::utils::ThreadSafeError;
 use crate::{tprintln, CHECK};
-use alloy_rpc_types::Filter;
+use alloy_rpc_types::{Filter, Header};
 use alloy_rpc_types::Log;
 use alloy_rpc_types::{Block, Transaction};
 use futures::stream::FuturesOrdered;
@@ -59,7 +59,7 @@ impl LogEvent {
 }
 
 pub async fn get_log_batch<
-  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>,
+  T: EthApiClient<Transaction, Block, Receipt, Header> + Send + Sync + EthFilterApiClient<u64>,
 >(
   provider: &T,
   contract_address: Address,
@@ -87,7 +87,7 @@ pub fn is_checkpointable_range(start_block: u64, end_block: u64) -> bool {
 }
 
 pub async fn get_log_batch_task<
-  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>,
+  T: EthApiClient<Transaction, Block, Receipt, Header> + Send + Sync + EthFilterApiClient<u64>,
 >(
   provider: &T,
   contract_address: Address,
@@ -200,7 +200,7 @@ pub async fn apply_to_logs<'a, T, F>(
   f: F,
 ) -> Result<(), ThreadSafeError>
 where
-  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>,
+  T: EthApiClient<Transaction, Block, Receipt, Header> + Send + Sync + EthFilterApiClient<u64>,
   F: Fn(Vec<LogEvent>) -> Result<(), ThreadSafeError> + Send + Sync + 'a,
 {
   tprintln!("Getting logs between {} and {}", start_block, end_block);
@@ -267,7 +267,7 @@ where
 }
 
 pub async fn get_logs_between<
-  T: EthApiClient<Transaction, Block, Receipt> + Send + Sync + EthFilterApiClient<u64>,
+  T: EthApiClient<Transaction, Block, Receipt, Header> + Send + Sync + EthFilterApiClient<u64>,
 >(
   provider: &T,
   contract_address: Address,
