@@ -30,7 +30,7 @@ async fn main() -> Result<(), ThreadSafeError> {
   let client: Arc<jsonrpsee::http_client::HttpClient> =
     Arc::new(HttpClientBuilder::default().build(geth_url)?);
 
-  let mut mem = CertainMemoryHandler::<USDTMemoryUpdates>::new();
+  let mut mem = CertainMemoryHandler::<WBTCMemoryUpdates>::new();
   // let mut mem = CertainMemoryHandler::<SHIBMemoryUpdates>::new();
   // let mut mem = CertainMemoryHandler::<USDTMemoryUpdates>::new();
   mem.initialize(client.clone()).await?;

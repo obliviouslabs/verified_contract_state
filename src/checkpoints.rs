@@ -27,10 +27,12 @@ impl CheckPoint {
     const CAPACITY: usize = 100 * 1024 * 1024;
 
     let file = OpenOptions::new().read(true).open(&self.path)?;
-
     let buf_reader = BufReader::with_capacity(CAPACITY, file);
+    
+    let decoder = zstd::Decoder::new(buf_reader)?;
+    // let decoder = buf_reader;
 
-    let ret: T = bincode::deserialize_from(buf_reader)?;
+    let ret: T = bincode::deserialize_from(decoder)?;
     // let ret: T = serde_json::from_reader(buf_reader)?;
 
     Ok(ret)
@@ -49,7 +51,14 @@ pub fn save_checkpoint<T: Serialize>(
   let file = OpenOptions::new().write(true).create(true).truncate(true).open(&filename).unwrap();
   let buf_writer = BufWriter::with_capacity(CAPACITY, file);
 
-  bincode::serialize_into(buf_writer, data).unwrap();
+  let mut encoder = zstd::Encoder::new(buf_writer, 0)?;
+  // let encoder = buf_writer;
+
+
+  bincode::serialize_into(&mut encoder, data).unwrap();
+
+  encoder.finish()?;
+
   // serde_json::to_writer(buf_writer, data)?;
 
   Ok(CheckPoint { block, path: PathBuf::from(filename) })
