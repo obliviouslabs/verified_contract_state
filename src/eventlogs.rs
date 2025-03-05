@@ -25,10 +25,10 @@ pub struct LogEvent {
   data: LogData,
   // block_hash: B256,
   block_number: u64,
-  block_timestamp: u64, // UNDONE(): deprecate this, it is 0
+  // block_timestamp: u64, // always 0
   // transaction_hash: B256,
-  transaction_index: u64,
-  log_index: u64,
+  // transaction_index: u64,
+  // log_index: u64,
   // removed: bool
 }
 
@@ -39,10 +39,10 @@ impl From<Log> for LogEvent {
       data: log.inner.data,
       // block_hash: log.block_hash.unwrap_or_default(),
       block_number: log.block_number.unwrap(),
-      block_timestamp: 0, // UNDONE(): deprecate this, it is always
+      // block_timestamp: 0, 
       // transaction_hash: log.transaction_hash.unwrap_or_default(),
-      transaction_index: log.transaction_index.unwrap_or_default(),
-      log_index: log.log_index.unwrap_or_default(),
+      // transaction_index: log.transaction_index.unwrap_or_default(),
+      // log_index: log.log_index.unwrap_or_default(),
       // removed: log.removed
     }
   }
