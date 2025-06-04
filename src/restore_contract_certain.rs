@@ -65,9 +65,11 @@ pub fn verify_memory_incremental(
   for (k, v) in changes.iter() {
     let (key, val) = get_kv(k, v);
     if v == &B256::default() {
-      trie.delete(key.clone()).expect("must delete storage trie");
+      let dbg = trie.delete(key.clone());
+      CHECK(!dbg.is_err()); // Deletion failed, just return err instead of panicking
     } else {
-      trie.insert(key.clone(), val.clone()).expect("must insert storage trie");
+      let dbg = trie.insert(key.clone(), val.clone());
+      CHECK(!dbg.is_err()); // Insertion failed, just return err instead of panicking
     }
   }
 
