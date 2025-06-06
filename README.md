@@ -17,6 +17,12 @@ Then just run the code:
   cargo run
 ```
 
+Note, you [may](https://github.com/paradigmxyz/reth/issues/15774) have to run the following command: 
+```
+export CFLAGS="-std=c11 -D_GNU_SOURCE"
+export JEMALLOC_SYS_WITH_LG_VADDR=48
+```
+
 # How to use in other packages
 
 Take a look at src/lib.rs
